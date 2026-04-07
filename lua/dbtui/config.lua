@@ -18,9 +18,10 @@ M.defaults = {
     keymap = "<leader>db",
 
     -- Keymap (terminal mode, while focused on the dbtui window) to hide it
-    -- without killing the process. Use a key that dbtui itself does not bind.
-    -- Set to nil to disable.
-    hide_keymap = "<C-q>",
+    -- without killing the process. Default is <M-q> (Alt+q) because <C-q>
+    -- gets eaten by the tty's IXON flow control on Linux. Pick any key
+    -- dbtui itself does not bind. Set to nil to disable.
+    hide_keymap = "<M-q>",
 
     -- Check for updates on first toggle (compares installed vs crates.io)
     check_updates = true,

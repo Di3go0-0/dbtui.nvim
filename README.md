@@ -81,9 +81,10 @@ require("dbtui").setup({
     keymap = "<leader>db",
 
     -- Keymap (terminal mode, while focused on the dbtui window) to hide it
-    -- without killing the process. Use a key dbtui itself does not bind.
-    -- Set to nil to disable.
-    hide_keymap = "<C-q>",
+    -- without killing the process. Default is <M-q> (Alt+q) because <C-q>
+    -- is intercepted by the tty's IXON flow control on Linux. Set to nil
+    -- to disable.
+    hide_keymap = "<M-q>",
 
     -- Check for updates (compares installed vs crates.io)
     check_updates = true,
@@ -119,9 +120,9 @@ Because dbtui captures all keys while focused (including its own `<leader>` chor
 
 | Key                   | Action                                       |
 |-----------------------|----------------------------------------------|
-| `<C-q>` (default)     | Hide the dbtui window (process keeps running)|
+| `<M-q>` (default)     | Hide the dbtui window (process keeps running)|
 
-You can rebind it via `hide_keymap` in `setup()`, or set it to `nil` to disable. Pick any key dbtui itself doesn't bind — `<C-q>`, `<F12>`, `<M-d>`, etc. all work. After hiding, reopen with `<leader>db` from anywhere in nvim.
+You can rebind it via `hide_keymap` in `setup()`, or set it to `nil` to disable. Pick any key dbtui itself doesn't bind. Note: avoid `<C-q>` and `<C-s>` — Linux ttys eat them as XON/XOFF flow control before nvim ever sees them. After hiding, reopen with `<leader>db` from anywhere in nvim.
 
 ### Update notifications
 
