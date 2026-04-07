@@ -111,45 +111,19 @@ local function block_mouse(target_buf)
     end
 end
 
---- Force the dbtui process to redraw at the current window dimensions.
----
---- When we reattach an existing terminal buffer to a new floating window,
---- nvim doesn't always call uv_pty_resize because the window dimensions
---- match what the pty already has. The TUI keeps drawing at the old size
---- — content drifts left, columns get cut off.
----
---- The fix is two-pronged:
----  1. Open the window 1 column smaller than target, then resize it back
----     up. This guarantees nvim sees an actual size change and calls
----     uv_pty_resize, which kicks SIGWINCH into the child pty.
----  2. Send SIGWINCH directly to the child pid via vim.uv.kill as a
----     belt-and-suspenders backup so dbtui re-queries terminal dims even
----     if the pty resize was a no-op.
-local function force_redraw(target_buf, target_win)
-    if not (target_win and vim.api.nvim_win_is_valid(target_win)) then return end
-
-    -- Step 1: shrink-then-restore to force uv_pty_resize.
-    local cfg = vim.api.nvim_win_get_config(target_win)
-    local shrunk = vim.tbl_extend("force", {}, cfg, { width = math.max((cfg.width or 1) - 1, 1) })
-    pcall(vim.api.nvim_win_set_config, target_win, shrunk)
-    vim.schedule(function()
-        if target_win and vim.api.nvim_win_is_valid(target_win) then
-            pcall(vim.api.nvim_win_set_config, target_win, cfg)
-        end
-    end)
-
-    -- Step 2: SIGWINCH the child process directly.
-    vim.schedule(function()
-        local ok, job_id = pcall(vim.api.nvim_buf_get_var, target_buf, "terminal_job_id")
-        if not ok or not job_id then return end
-        local pid = vim.fn.jobpid(job_id)
-        if not pid or pid <= 0 then return end
-        if vim.uv and vim.uv.kill then
-            pcall(vim.uv.kill, pid, "sigwinch")
-        else
-            pcall(vim.fn.jobstart, { "kill", "-WINCH", tostring(pid) }, { detach = true })
-        end
-    end)
+--- Send SIGWINCH to the dbtui process so it re-queries terminal dimensions
+--- and redraws cleanly. Used to fix layout drift after reattach or when
+--- the initial spawn picks up stale pty dimensions.
+local function send_sigwinch(target_buf)
+    local ok, job_id = pcall(vim.api.nvim_buf_get_var, target_buf, "terminal_job_id")
+    if not ok or not job_id then return end
+    local pid = vim.fn.jobpid(job_id)
+    if not pid or pid <= 0 then return end
+    if vim.uv and vim.uv.kill then
+        pcall(vim.uv.kill, pid, "sigwinch")
+    else
+        pcall(vim.fn.jobstart, { "kill", "-WINCH", tostring(pid) }, { detach = true })
+    end
 end
 
 --- Bind the configured hide keymap inside the terminal so the user can hide
@@ -182,8 +156,13 @@ function M.open()
 
     if buf and vim.api.nvim_buf_is_valid(buf) then
         win = open_float(buf)
-        force_redraw(buf, win)
         vim.cmd("startinsert")
+        -- After the new window is settled, kick dbtui so it re-measures
+        -- the pty and redraws cleanly (otherwise it keeps drawing at the
+        -- dimensions it had before being hidden).
+        vim.defer_fn(function()
+            send_sigwinch(buf)
+        end, 30)
         return
     end
 
@@ -219,15 +198,6 @@ function M.open()
     block_mouse(buf)
     bind_hide_key(buf)
     vim.cmd("startinsert")
-
-    -- The first frame dbtui draws often uses stale pty dimensions because
-    -- nvim sets up the pty before the floating window has fully settled.
-    -- Trigger the same shrink-restore + SIGWINCH dance we use on reattach
-    -- so dbtui re-queries terminal size on its first proper draw cycle.
-    -- Deferred so dbtui has time to start its event loop before SIGWINCH.
-    vim.defer_fn(function()
-        force_redraw(buf, win)
-    end, 80)
 end
 
 --- Hide the dbtui window without killing the process. No-op if no window.
