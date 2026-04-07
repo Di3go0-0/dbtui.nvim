@@ -219,6 +219,15 @@ function M.open()
     block_mouse(buf)
     bind_hide_key(buf)
     vim.cmd("startinsert")
+
+    -- The first frame dbtui draws often uses stale pty dimensions because
+    -- nvim sets up the pty before the floating window has fully settled.
+    -- Trigger the same shrink-restore + SIGWINCH dance we use on reattach
+    -- so dbtui re-queries terminal size on its first proper draw cycle.
+    -- Deferred so dbtui has time to start its event loop before SIGWINCH.
+    vim.defer_fn(function()
+        force_redraw(buf, win)
+    end, 80)
 end
 
 --- Hide the dbtui window without killing the process. No-op if no window.
