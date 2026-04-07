@@ -198,6 +198,18 @@ function M.open()
     block_mouse(buf)
     bind_hide_key(buf)
     vim.cmd("startinsert")
+
+    -- After dbtui has had a chance to start its event loop, kick it with
+    -- SIGWINCH so it re-queries the pty dimensions. Without this, dbtui's
+    -- first frame inside nvim's terminal can render with stale dimensions
+    -- (especially noticeable when the sidebar is hidden by default — the
+    -- centered "empty workspace" content lays out wrong). We send several
+    -- SIGWINCHes spaced out so we cover slow startup paths.
+    for _, ms in ipairs({ 100, 250, 500 }) do
+        vim.defer_fn(function()
+            send_sigwinch(buf)
+        end, ms)
+    end
 end
 
 --- Hide the dbtui window without killing the process. No-op if no window.
