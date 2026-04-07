@@ -14,8 +14,13 @@ M.defaults = {
     -- Auto-open dbtui when entering .sql files (once per buffer)
     open_on_sql_file = false,
 
-    -- Keymap to toggle dbtui (set to nil to disable)
+    -- Keymap (normal mode in nvim) to toggle dbtui. Set to nil to disable.
     keymap = "<leader>db",
+
+    -- Keymap (terminal mode, while focused on the dbtui window) to hide it
+    -- without killing the process. Use a key that dbtui itself does not bind.
+    -- Set to nil to disable.
+    hide_keymap = "<C-q>",
 
     -- Check for updates on first toggle (compares installed vs crates.io)
     check_updates = true,

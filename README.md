@@ -77,8 +77,13 @@ require("dbtui").setup({
     -- Auto-open dbtui when entering .sql files (once per buffer)
     open_on_sql_file = false,
 
-    -- Keymap to toggle dbtui (set to nil to disable)
+    -- Keymap (normal mode in nvim) to toggle dbtui. Set to nil to disable.
     keymap = "<leader>db",
+
+    -- Keymap (terminal mode, while focused on the dbtui window) to hide it
+    -- without killing the process. Use a key dbtui itself does not bind.
+    -- Set to nil to disable.
+    hide_keymap = "<C-q>",
 
     -- Check for updates (compares installed vs crates.io)
     check_updates = true,
@@ -107,6 +112,16 @@ Pressing the toggle keymap on a visible dbtui window **hides** the floating wind
 dbtui only fully exits when you quit it from inside the app (`<leader>q q`). After that, the next toggle spawns a fresh instance.
 
 This means you can keep dbtui "loaded" across your whole nvim session and pop it open whenever you need it without losing context.
+
+#### Hiding from inside dbtui
+
+Because dbtui captures all keys while focused (including its own `<leader>` chords), the nvim-side `<leader>db` won't reach nvim when you're inside the floating terminal. To hide without leaving terminal mode, the plugin sets a buffer-local terminal-mode keymap on the dbtui window:
+
+| Key                   | Action                                       |
+|-----------------------|----------------------------------------------|
+| `<C-q>` (default)     | Hide the dbtui window (process keeps running)|
+
+You can rebind it via `hide_keymap` in `setup()`, or set it to `nil` to disable. Pick any key dbtui itself doesn't bind — `<C-q>`, `<F12>`, `<M-d>`, etc. all work. After hiding, reopen with `<leader>db` from anywhere in nvim.
 
 ### Update notifications
 

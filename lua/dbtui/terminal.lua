@@ -111,6 +111,21 @@ local function block_mouse(target_buf)
     end
 end
 
+--- Bind the configured hide keymap inside the terminal so the user can hide
+--- dbtui without leaving terminal mode (and without it interfering with
+--- dbtui's internal leader bindings).
+local function bind_hide_key(target_buf)
+    local key = config.options.hide_keymap
+    if not key or key == "" then return end
+    vim.api.nvim_buf_set_keymap(
+        target_buf,
+        "t",
+        key,
+        [[<C-\><C-n><Cmd>lua require('dbtui.terminal').toggle()<CR>]],
+        { noremap = true, silent = true, desc = "Hide dbtui (keep process alive)" }
+    )
+end
+
 --- Toggle dbtui.
 ---
 --- Behaviour:
@@ -163,6 +178,7 @@ function M.toggle()
     })
 
     block_mouse(buf)
+    bind_hide_key(buf)
     vim.cmd("startinsert")
 end
 
