@@ -81,10 +81,11 @@ require("dbtui").setup({
     keymap = "<leader>db",
 
     -- Keymap (terminal mode, while focused on the dbtui window) to hide it
-    -- without killing the process. Default <C-Space>. Avoid <C-q>/<C-s>
-    -- (eaten by the tty as XON/XOFF) and <M-q> (locks Zellij). Set to nil
-    -- to disable.
-    hide_keymap = "<C-Space>",
+    -- without killing the process. Default <C-h>. Heads up: dbtui uses
+    -- <C-h> internally for spatial navigation, so binding it here means
+    -- dbtui won't receive Ctrl+h — use h/l in normal mode instead.
+    -- Avoid <C-q>/<C-s> (XON/XOFF) and <M-q> (locks Zellij). nil disables.
+    hide_keymap = "<C-h>",
 
     -- Check for updates (compares installed vs crates.io)
     check_updates = true,
@@ -120,9 +121,13 @@ Because dbtui captures all keys while focused (including its own `<leader>` chor
 
 | Key                     | Action                                       |
 |-------------------------|----------------------------------------------|
-| `<C-Space>` (default)   | Hide the dbtui window (process keeps running)|
+| `<C-h>` (default)       | Hide the dbtui window (process keeps running)|
 
-You can rebind it via `hide_keymap` in `setup()`, or set it to `nil` to disable. Pick any key dbtui itself doesn't bind. Note: avoid `<C-q>` and `<C-s>` — Linux ttys eat them as XON/XOFF flow control before nvim ever sees them. `<M-q>` is also a bad choice if you use Zellij. After hiding, reopen with `<leader>db` from anywhere in nvim.
+You can rebind it via `hide_keymap` in `setup()`, or set it to `nil` to disable.
+
+> **Heads up:** dbtui uses `<C-h>` internally for spatial navigation between panels and tab groups. Binding it as the hide keymap means nvim intercepts it before dbtui sees it, so you'll need to use plain `h`/`l` in normal mode for navigation inside dbtui. If you'd rather keep `<C-h>` for navigation, pick a different `hide_keymap`. Avoid `<C-q>` / `<C-s>` (Linux ttys eat them as XON/XOFF) and `<M-q>` (locks Zellij).
+
+After hiding, reopen with `<leader>db` from anywhere in nvim.
 
 ### Update notifications
 
