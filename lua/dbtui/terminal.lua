@@ -111,6 +111,31 @@ local function block_mouse(target_buf)
     end
 end
 
+--- Force the dbtui process to redraw at the current window dimensions.
+---
+--- When we reattach an existing terminal buffer to a new floating window,
+--- nvim does not always notify the child process about the (possibly new)
+--- pty size, so the TUI keeps drawing at the old size — content shifts
+--- left, columns get cut off, etc.
+---
+--- The fix: re-apply the window config (so nvim recomputes the pty size)
+--- and then SIGWINCH the process so it re-queries the terminal dimensions
+--- and redraws from scratch.
+local function force_redraw(target_buf, target_win)
+    vim.schedule(function()
+        if not (target_win and vim.api.nvim_win_is_valid(target_win)) then return end
+        local cfg = vim.api.nvim_win_get_config(target_win)
+        pcall(vim.api.nvim_win_set_config, target_win, cfg)
+
+        local ok, job_id = pcall(vim.api.nvim_buf_get_var, target_buf, "terminal_job_id")
+        if not ok or not job_id then return end
+        local pid = vim.fn.jobpid(job_id)
+        if not pid or pid <= 0 then return end
+        -- Detached so we don't block; ignore failures (e.g. on Windows).
+        pcall(vim.fn.jobstart, { "kill", "-WINCH", tostring(pid) }, { detach = true })
+    end)
+end
+
 --- Bind the configured hide keymap inside the terminal so the user can hide
 --- dbtui without leaving terminal mode (and without it interfering with
 --- dbtui's internal leader bindings).
@@ -141,6 +166,7 @@ function M.open()
 
     if buf and vim.api.nvim_buf_is_valid(buf) then
         win = open_float(buf)
+        force_redraw(buf, win)
         vim.cmd("startinsert")
         return
     end
