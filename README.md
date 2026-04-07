@@ -96,6 +96,14 @@ require("dbtui").setup({
 
 Default keymap: `<leader>db`
 
+### Hide vs quit (background instance)
+
+Pressing the toggle keymap on a visible dbtui window **hides** the floating window without killing dbtui. The terminal buffer keeps running in the background, so when you toggle it back open you get exactly where you left off — same open tabs, queries, cursor position, scroll, connections, everything.
+
+dbtui only fully exits when you quit it from inside the app (`<leader>q q`). After that, the next toggle spawns a fresh instance.
+
+This means you can keep dbtui "loaded" across your whole nvim session and pop it open whenever you need it without losing context.
+
 ### Update notifications
 
 On first toggle per session, the plugin compares your installed dbtui version against the latest on crates.io and notifies you when an update is available. Disable with `check_updates = false`.
