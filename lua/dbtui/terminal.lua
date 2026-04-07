@@ -1,6 +1,8 @@
 local M = {}
 local config = require("dbtui.config")
 
+-- buf is kept alive across hide/show so the dbtui process keeps running
+-- in the background. Only cleared when dbtui actually exits.
 local buf, win
 
 --- Check if the dbtui binary is available in PATH.
@@ -70,24 +72,15 @@ local function check_for_updates()
     })
 end
 
-function M.toggle()
-    if win and vim.api.nvim_win_is_valid(win) then
-        vim.api.nvim_win_close(win, true)
-        win = nil
-        return
-    end
-
-    if not check_binary() then return end
-    check_for_updates()
-
+--- Open a centered floating window pointing at the given buffer.
+local function open_float(target_buf)
     local opts = config.options.float_opts
     local width = math.floor(vim.o.columns * opts.width)
     local height = math.floor(vim.o.lines * opts.height)
     local row = math.floor((vim.o.lines - height) / 2)
     local col = math.floor((vim.o.columns - width) / 2)
 
-    buf = vim.api.nvim_create_buf(false, true)
-    win = vim.api.nvim_open_win(buf, true, {
+    return vim.api.nvim_open_win(target_buf, true, {
         relative = "editor",
         width = width,
         height = height,
@@ -96,35 +89,78 @@ function M.toggle()
         border = opts.border,
         style = "minimal",
     })
+end
+
+--- Block mouse events on the buffer so terminal scrollback can't corrupt the TUI.
+local function block_mouse(target_buf)
+    local nop = { noremap = true, silent = true }
+    local maps = {
+        "<ScrollWheelUp>",
+        "<ScrollWheelDown>",
+        "<LeftMouse>",
+        "<2-LeftMouse>",
+        "<RightMouse>",
+        "<MiddleMouse>",
+        "<LeftDrag>",
+        "<LeftRelease>",
+    }
+    for _, m in ipairs(maps) do
+        vim.api.nvim_buf_set_keymap(target_buf, "t", m, "<Nop>", nop)
+    end
+end
+
+--- Toggle dbtui.
+---
+--- Behaviour:
+--- 1. Window visible → hide it (process keeps running in the background buffer)
+--- 2. Window hidden + buffer alive → reattach a window to the existing buffer
+---    so the user gets back exactly the state they left (open tabs, queries,
+---    cursor position, etc.)
+--- 3. No buffer yet (or process exited) → spawn a fresh dbtui instance
+function M.toggle()
+    -- Case 1: window is visible — hide it but keep the buffer alive
+    if win and vim.api.nvim_win_is_valid(win) then
+        vim.api.nvim_win_hide(win)
+        win = nil
+        return
+    end
+
+    -- Case 2: buffer still alive (dbtui running in background) — reattach
+    if buf and vim.api.nvim_buf_is_valid(buf) then
+        win = open_float(buf)
+        vim.cmd("startinsert")
+        return
+    end
+
+    -- Case 3: spawn a fresh instance
+    if not check_binary() then return end
+    check_for_updates()
+
+    buf = vim.api.nvim_create_buf(false, true)
+    win = open_float(buf)
 
     -- Build command
     local cmd = config.options.dbtui_cmd
-
-    -- Extra user-defined arguments
     for _, arg in ipairs(config.options.extra_args) do
         cmd = cmd .. " " .. arg
     end
 
     vim.fn.termopen(cmd, {
         on_exit = function()
+            -- dbtui actually exited — close the window AND wipe the buffer
+            -- so the next toggle starts a fresh instance.
             if win and vim.api.nvim_win_is_valid(win) then
                 vim.api.nvim_win_close(win, true)
-                win = nil
             end
+            if buf and vim.api.nvim_buf_is_valid(buf) then
+                vim.api.nvim_buf_delete(buf, { force = true })
+            end
+            win = nil
+            buf = nil
         end,
     })
 
-    -- Block mouse events to prevent terminal scrollback from corrupting the TUI
-    local nop = { noremap = true, silent = true }
-    vim.api.nvim_buf_set_keymap(buf, "t", "<ScrollWheelUp>", "<Nop>", nop)
-    vim.api.nvim_buf_set_keymap(buf, "t", "<ScrollWheelDown>", "<Nop>", nop)
-    vim.api.nvim_buf_set_keymap(buf, "t", "<LeftMouse>", "<Nop>", nop)
-    vim.api.nvim_buf_set_keymap(buf, "t", "<2-LeftMouse>", "<Nop>", nop)
-    vim.api.nvim_buf_set_keymap(buf, "t", "<RightMouse>", "<Nop>", nop)
-    vim.api.nvim_buf_set_keymap(buf, "t", "<MiddleMouse>", "<Nop>", nop)
-    vim.api.nvim_buf_set_keymap(buf, "t", "<LeftDrag>", "<Nop>", nop)
-    vim.api.nvim_buf_set_keymap(buf, "t", "<LeftRelease>", "<Nop>", nop)
-
+    block_mouse(buf)
     vim.cmd("startinsert")
 end
 
