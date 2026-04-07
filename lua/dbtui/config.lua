@@ -20,6 +20,10 @@ M.defaults = {
     -- Check for updates on first toggle (compares installed vs crates.io)
     check_updates = true,
 
+    -- Check for updates on plugin setup (nvim startup) too, so you get notified
+    -- without having to open dbtui first. Async, no startup penalty.
+    check_updates_on_startup = true,
+
     -- Extra arguments to pass to the dbtui CLI
     extra_args = {},
 }

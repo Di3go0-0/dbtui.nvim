@@ -80,8 +80,12 @@ require("dbtui").setup({
     -- Keymap to toggle dbtui (set to nil to disable)
     keymap = "<leader>db",
 
-    -- Check for updates on first toggle (compares installed vs crates.io)
+    -- Check for updates (compares installed vs crates.io)
     check_updates = true,
+
+    -- Also check on plugin setup (nvim startup), not just on first toggle.
+    -- Deferred and async — no startup penalty.
+    check_updates_on_startup = true,
 
     -- Extra arguments to pass to the dbtui CLI
     extra_args = {},
@@ -106,7 +110,17 @@ This means you can keep dbtui "loaded" across your whole nvim session and pop it
 
 ### Update notifications
 
-On first toggle per session, the plugin compares your installed dbtui version against the latest on crates.io and notifies you when an update is available. Disable with `check_updates = false`.
+The plugin compares your installed dbtui version against the latest on crates.io and pops a `vim.notify` when an update is available. By default the check runs once on nvim startup (deferred 1s, fully async — no startup penalty) and once on first toggle per session.
+
+- `check_updates = false` disables the check entirely.
+- `check_updates_on_startup = false` keeps the check on first toggle but skips the startup one.
+
+When an update is available you'll see something like:
+
+```
+dbtui update available: 0.2.3 → 0.2.4
+Run: cargo install dbtui
+```
 
 ### Auto-open on `.sql` files
 

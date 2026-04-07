@@ -4,6 +4,14 @@ function M.setup(opts)
     require("dbtui.config").setup(opts)
     local config = require("dbtui.config").options
 
+    -- Check for updates on startup so the user is notified about new releases
+    -- without having to open dbtui first. Deferred so it never blocks startup.
+    if config.check_updates and config.check_updates_on_startup then
+        vim.defer_fn(function()
+            require("dbtui.terminal").check_for_updates()
+        end, 1000)
+    end
+
     vim.api.nvim_create_user_command("Dbtui", function()
         require("dbtui.terminal").toggle()
     end, { desc = "Toggle dbtui database client" })

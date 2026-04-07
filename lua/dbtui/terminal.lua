@@ -20,12 +20,14 @@ local function check_binary()
 end
 
 --- Check for updates asynchronously (compares installed vs latest on crates.io).
+--- Runs at most once per nvim session. Safe to call from setup() — fully async.
 local update_checked = false
-local function check_for_updates()
+function M.check_for_updates()
     if update_checked then return end
     update_checked = true
 
     if not config.options.check_updates then return end
+    if vim.fn.executable(config.options.dbtui_cmd) == 0 then return end
 
     local cmd = config.options.dbtui_cmd
     -- Get installed version
@@ -134,7 +136,7 @@ function M.toggle()
 
     -- Case 3: spawn a fresh instance
     if not check_binary() then return end
-    check_for_updates()
+    M.check_for_updates()
 
     buf = vim.api.nvim_create_buf(false, true)
     win = open_float(buf)
