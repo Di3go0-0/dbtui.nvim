@@ -80,6 +80,11 @@ require("dbtui").setup({
     -- Keymap (normal mode in nvim) to toggle dbtui. Set to nil to disable.
     keymap = "<leader>db",
 
+    -- Keymap (normal mode in nvim) to open dbtui without toggling.
+    -- Focuses if visible, reattaches if hidden, spawns if no instance.
+    -- nil by default — opt in if you want a separate "open only" key.
+    open_keymap = nil,
+
     -- Keymap (terminal mode, while focused on the dbtui window) to hide it
     -- without killing the process. Default <C-h>. Heads up: dbtui uses
     -- <C-h> internally for spatial navigation, so binding it here means
@@ -101,11 +106,27 @@ require("dbtui").setup({
 
 ## Usage
 
-| Command   | Description           |
-|-----------|-----------------------|
-| `:Dbtui`  | Toggle dbtui window   |
+| Command       | Description                                              |
+|---------------|----------------------------------------------------------|
+| `:Dbtui`      | Toggle dbtui window (open/hide preserving state)         |
+| `:DbtuiOpen`  | Open dbtui — focuses if visible, reattaches if hidden    |
+| `:DbtuiHide`  | Hide dbtui without killing the process                   |
 
-Default keymap: `<leader>db`
+| Lua function                          | Description       |
+|---------------------------------------|-------------------|
+| `require('dbtui.terminal').toggle()`  | Toggle            |
+| `require('dbtui.terminal').open()`    | Open / focus      |
+| `require('dbtui.terminal').hide()`    | Hide              |
+
+Default keymap: `<leader>db` → toggle. `open_keymap` is opt-in.
+
+```lua
+-- Example: separate keys for open and toggle
+require("dbtui").setup({
+    keymap = "<leader>db",       -- toggle
+    open_keymap = "<leader>dD",  -- open only
+})
+```
 
 ### Hide vs quit (background instance)
 

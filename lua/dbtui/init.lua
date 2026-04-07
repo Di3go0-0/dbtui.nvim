@@ -16,10 +16,24 @@ function M.setup(opts)
         require("dbtui.terminal").toggle()
     end, { desc = "Toggle dbtui database client" })
 
+    vim.api.nvim_create_user_command("DbtuiOpen", function()
+        require("dbtui.terminal").open()
+    end, { desc = "Open (or focus) dbtui without toggling" })
+
+    vim.api.nvim_create_user_command("DbtuiHide", function()
+        require("dbtui.terminal").hide()
+    end, { desc = "Hide dbtui without killing the process" })
+
     if config.keymap then
         vim.keymap.set("n", config.keymap, function()
             require("dbtui.terminal").toggle()
         end, { desc = "Toggle dbtui database client" })
+    end
+
+    if config.open_keymap then
+        vim.keymap.set("n", config.open_keymap, function()
+            require("dbtui.terminal").open()
+        end, { desc = "Open dbtui database client" })
     end
 
     -- Auto-open on .sql files (only once per buffer)
@@ -30,7 +44,7 @@ function M.setup(opts)
             callback = function(ev)
                 if not opened[ev.buf] then
                     opened[ev.buf] = true
-                    require("dbtui.terminal").toggle()
+                    require("dbtui.terminal").open()
                 end
             end,
         })

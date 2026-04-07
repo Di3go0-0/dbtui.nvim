@@ -121,42 +121,36 @@ local function bind_hide_key(target_buf)
         target_buf,
         "t",
         key,
-        [[<C-\><C-n><Cmd>lua require('dbtui.terminal').toggle()<CR>]],
+        [[<C-\><C-n><Cmd>lua require('dbtui.terminal').hide()<CR>]],
         { noremap = true, silent = true, desc = "Hide dbtui (keep process alive)" }
     )
 end
 
---- Toggle dbtui.
+--- Open (or focus) dbtui without hiding it.
 ---
---- Behaviour:
---- 1. Window visible → hide it (process keeps running in the background buffer)
---- 2. Window hidden + buffer alive → reattach a window to the existing buffer
----    so the user gets back exactly the state they left (open tabs, queries,
----    cursor position, etc.)
---- 3. No buffer yet (or process exited) → spawn a fresh dbtui instance
-function M.toggle()
-    -- Case 1: window is visible — hide it but keep the buffer alive
+--- - Window already visible: focuses it.
+--- - Buffer alive but window hidden: reattaches a window so the user gets
+---   back exactly where they left off (tabs, queries, cursor, connections).
+--- - No instance yet (or previous one exited): spawns a fresh dbtui.
+function M.open()
     if win and vim.api.nvim_win_is_valid(win) then
-        vim.api.nvim_win_hide(win)
-        win = nil
+        vim.api.nvim_set_current_win(win)
+        vim.cmd("startinsert")
         return
     end
 
-    -- Case 2: buffer still alive (dbtui running in background) — reattach
     if buf and vim.api.nvim_buf_is_valid(buf) then
         win = open_float(buf)
         vim.cmd("startinsert")
         return
     end
 
-    -- Case 3: spawn a fresh instance
     if not check_binary() then return end
     M.check_for_updates()
 
     buf = vim.api.nvim_create_buf(false, true)
     win = open_float(buf)
 
-    -- Build command
     local cmd = config.options.dbtui_cmd
     for _, arg in ipairs(config.options.extra_args) do
         cmd = cmd .. " " .. arg
@@ -165,7 +159,7 @@ function M.toggle()
     vim.fn.termopen(cmd, {
         on_exit = function()
             -- dbtui actually exited — close the window AND wipe the buffer
-            -- so the next toggle starts a fresh instance.
+            -- so the next open spawns a fresh instance.
             if win and vim.api.nvim_win_is_valid(win) then
                 vim.api.nvim_win_close(win, true)
             end
@@ -180,6 +174,23 @@ function M.toggle()
     block_mouse(buf)
     bind_hide_key(buf)
     vim.cmd("startinsert")
+end
+
+--- Hide the dbtui window without killing the process. No-op if no window.
+function M.hide()
+    if win and vim.api.nvim_win_is_valid(win) then
+        vim.api.nvim_win_hide(win)
+        win = nil
+    end
+end
+
+--- Toggle dbtui: hide if visible, otherwise open (reattaching state if any).
+function M.toggle()
+    if win and vim.api.nvim_win_is_valid(win) then
+        M.hide()
+    else
+        M.open()
+    end
 end
 
 return M

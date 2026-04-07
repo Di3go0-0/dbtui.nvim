@@ -17,6 +17,11 @@ M.defaults = {
     -- Keymap (normal mode in nvim) to toggle dbtui. Set to nil to disable.
     keymap = "<leader>db",
 
+    -- Keymap (normal mode in nvim) to open dbtui without toggling — focuses
+    -- if visible, reattaches if hidden, spawns if no instance. Set to nil
+    -- to disable. nil by default; users can opt in.
+    open_keymap = nil,
+
     -- Keymap (terminal mode, while focused on the dbtui window) to hide it
     -- without killing the process. NOTE: dbtui uses <C-h> internally for
     -- spatial navigation between panels and tab groups. Binding it here
