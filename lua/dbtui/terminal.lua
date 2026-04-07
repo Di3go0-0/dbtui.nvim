@@ -114,25 +114,41 @@ end
 --- Force the dbtui process to redraw at the current window dimensions.
 ---
 --- When we reattach an existing terminal buffer to a new floating window,
---- nvim does not always notify the child process about the (possibly new)
---- pty size, so the TUI keeps drawing at the old size — content shifts
---- left, columns get cut off, etc.
+--- nvim doesn't always call uv_pty_resize because the window dimensions
+--- match what the pty already has. The TUI keeps drawing at the old size
+--- — content drifts left, columns get cut off.
 ---
---- The fix: re-apply the window config (so nvim recomputes the pty size)
---- and then SIGWINCH the process so it re-queries the terminal dimensions
---- and redraws from scratch.
+--- The fix is two-pronged:
+---  1. Open the window 1 column smaller than target, then resize it back
+---     up. This guarantees nvim sees an actual size change and calls
+---     uv_pty_resize, which kicks SIGWINCH into the child pty.
+---  2. Send SIGWINCH directly to the child pid via vim.uv.kill as a
+---     belt-and-suspenders backup so dbtui re-queries terminal dims even
+---     if the pty resize was a no-op.
 local function force_redraw(target_buf, target_win)
-    vim.schedule(function()
-        if not (target_win and vim.api.nvim_win_is_valid(target_win)) then return end
-        local cfg = vim.api.nvim_win_get_config(target_win)
-        pcall(vim.api.nvim_win_set_config, target_win, cfg)
+    if not (target_win and vim.api.nvim_win_is_valid(target_win)) then return end
 
+    -- Step 1: shrink-then-restore to force uv_pty_resize.
+    local cfg = vim.api.nvim_win_get_config(target_win)
+    local shrunk = vim.tbl_extend("force", {}, cfg, { width = math.max((cfg.width or 1) - 1, 1) })
+    pcall(vim.api.nvim_win_set_config, target_win, shrunk)
+    vim.schedule(function()
+        if target_win and vim.api.nvim_win_is_valid(target_win) then
+            pcall(vim.api.nvim_win_set_config, target_win, cfg)
+        end
+    end)
+
+    -- Step 2: SIGWINCH the child process directly.
+    vim.schedule(function()
         local ok, job_id = pcall(vim.api.nvim_buf_get_var, target_buf, "terminal_job_id")
         if not ok or not job_id then return end
         local pid = vim.fn.jobpid(job_id)
         if not pid or pid <= 0 then return end
-        -- Detached so we don't block; ignore failures (e.g. on Windows).
-        pcall(vim.fn.jobstart, { "kill", "-WINCH", tostring(pid) }, { detach = true })
+        if vim.uv and vim.uv.kill then
+            pcall(vim.uv.kill, pid, "sigwinch")
+        else
+            pcall(vim.fn.jobstart, { "kill", "-WINCH", tostring(pid) }, { detach = true })
+        end
     end)
 end
 
@@ -177,12 +193,15 @@ function M.open()
     buf = vim.api.nvim_create_buf(false, true)
     win = open_float(buf)
 
-    local cmd = config.options.dbtui_cmd
+    -- Build the command as a list so nvim execs it directly without a shell
+    -- wrapper. That way jobpid() returns dbtui's pid, not the shell's, so
+    -- SIGWINCH actually reaches the right process on reattach.
+    local cmd_list = { config.options.dbtui_cmd }
     for _, arg in ipairs(config.options.extra_args) do
-        cmd = cmd .. " " .. arg
+        table.insert(cmd_list, arg)
     end
 
-    vim.fn.termopen(cmd, {
+    vim.fn.termopen(cmd_list, {
         on_exit = function()
             -- dbtui actually exited — close the window AND wipe the buffer
             -- so the next open spawns a fresh instance.
