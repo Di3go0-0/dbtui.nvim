@@ -18,10 +18,12 @@ M.defaults = {
     keymap = "<leader>db",
 
     -- Keymap (terminal mode, while focused on the dbtui window) to hide it
-    -- without killing the process. Default is <M-q> (Alt+q) because <C-q>
-    -- gets eaten by the tty's IXON flow control on Linux. Pick any key
-    -- dbtui itself does not bind. Set to nil to disable.
-    hide_keymap = "<M-q>",
+    -- without killing the process. Default is <C-Space>: pinky on Ctrl,
+    -- thumb on Space — fast and reachable. dbtui doesn't bind it, the tty
+    -- doesn't eat it, and it doesn't collide with common Zellij bindings
+    -- (avoid <C-q>/<C-s> which are XON/XOFF, and <M-q> which Zellij uses).
+    -- Set to nil to disable.
+    hide_keymap = "<C-Space>",
 
     -- Check for updates on first toggle (compares installed vs crates.io)
     check_updates = true,
