@@ -1,0 +1,132 @@
+# dbtui.nvim
+
+A Neovim plugin to open [dbtui](https://github.com/Di3go0-0/dbtui) in a floating terminal window, similar to how lazygit.nvim wraps lazygit.
+
+dbtui is a terminal database client (Oracle, PostgreSQL, MySQL) with vim-like navigation, oil-style floating navigator, tab groups, and SQL query execution.
+
+## Requirements
+
+- Neovim >= 0.8
+- [dbtui](https://github.com/Di3go0-0/dbtui) binary in your `PATH`
+
+Install dbtui via [crates.io](https://crates.io/crates/dbtui):
+
+```sh
+cargo install dbtui
+```
+
+Or build from source:
+
+```sh
+git clone https://github.com/Di3go0-0/dbtui.git
+cd dbtui
+cargo install --path .
+```
+
+## Installation
+
+### [folke/lazy.nvim](https://github.com/folke/lazy.nvim)
+
+```lua
+{
+    "Di3go0-0/dbtui.nvim",
+    dependencies = {},
+    config = function()
+        require("dbtui").setup()
+    end,
+    keys = {
+        { "<leader>db", "<cmd>Dbtui<cr>", desc = "Toggle dbtui" },
+    },
+}
+```
+
+### [wbthomason/packer.nvim](https://github.com/wbthomason/packer.nvim)
+
+```lua
+use {
+    "Di3go0-0/dbtui.nvim",
+    config = function()
+        require("dbtui").setup()
+    end,
+}
+```
+
+### [junegunn/vim-plug](https://github.com/junegunn/vim-plug)
+
+```vim
+Plug 'Di3go0-0/dbtui.nvim'
+
+" In your init.vim, after plug#end():
+lua require("dbtui").setup()
+```
+
+## Configuration
+
+```lua
+require("dbtui").setup({
+    -- Path to dbtui binary (default: "dbtui")
+    dbtui_cmd = "dbtui",
+
+    -- Floating window options
+    float_opts = {
+        width = 0.9,    -- 90% of editor width
+        height = 0.9,   -- 90% of editor height
+        border = "rounded",
+    },
+
+    -- Auto-open dbtui when entering .sql files (once per buffer)
+    open_on_sql_file = false,
+
+    -- Keymap to toggle dbtui (set to nil to disable)
+    keymap = "<leader>db",
+
+    -- Check for updates on first toggle (compares installed vs crates.io)
+    check_updates = true,
+
+    -- Extra arguments to pass to the dbtui CLI
+    extra_args = {},
+})
+```
+
+## Usage
+
+| Command   | Description           |
+|-----------|-----------------------|
+| `:Dbtui`  | Toggle dbtui window   |
+
+Default keymap: `<leader>db`
+
+### Update notifications
+
+On first toggle per session, the plugin compares your installed dbtui version against the latest on crates.io and notifies you when an update is available. Disable with `check_updates = false`.
+
+### Auto-open on `.sql` files
+
+Set `open_on_sql_file = true` to launch dbtui automatically the first time you enter a `.sql` buffer in a session.
+
+### Mouse handling
+
+Mouse events inside the floating terminal are blocked so terminal scrollback can't corrupt the TUI rendering. All navigation happens through the keyboard (vim-style hjkl, leader keys, etc.).
+
+## Inside dbtui
+
+Once dbtui is open, see the in-app help with `?` or `<leader>?`. Quick reference:
+
+| Key                | Action                                      |
+|--------------------|---------------------------------------------|
+| `<leader>e`        | Toggle sidebar                              |
+| `<leader>E`        | Toggle floating navigator (oil-style)       |
+| `<leader>\|`        | Vertical split (tab group)                  |
+| `<leader>m`        | Move tab to other group                     |
+| `<leader>b d`      | Close tab                                   |
+| `<leader>w d`      | Close tab group                             |
+| `<leader>q q`      | Quit dbtui                                  |
+| `<leader>f e/i`    | Export / import connections                 |
+| `<leader>Enter`    | Execute query at cursor                     |
+| `Tab` / `S-Tab`    | Cycle tabs in focused group                 |
+| `]` / `[`          | Cycle sub-views (Data / Properties / DDL)   |
+| `Ctrl+]` / `Ctrl+[`| Next / previous diagnostic                  |
+
+## License
+
+MIT
